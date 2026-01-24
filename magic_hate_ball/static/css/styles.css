@@ -1,0 +1,20 @@
+.box {
+	font-weight: bold;
+	padding: 1rem;
+	border-radius: 1rem;
+}
+
+.error {
+	color: black;
+	background-color: lightpink;
+}
+
+.hidden {
+	display: none;
+}
+
+.answer {
+	color: white;
+	background-color: darkblue;
+	border: none;
+}
