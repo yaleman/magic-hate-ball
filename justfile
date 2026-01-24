@@ -2,8 +2,8 @@
 default:
     just --list
 
-check: pre-commit
-
+check:
+    SKIP=js-build-clean just pre-commit
 
 pre-commit:
     uv run pre-commit run --all-files

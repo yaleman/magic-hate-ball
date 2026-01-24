@@ -7,6 +7,7 @@ function drawScene(
 	gl: WebGLRenderingContext,
 	programInfo: ProgramInfo,
 	buffers: Buffers,
+	texture: WebGLTexture | null,
 	cubeRotation: number,
 ) {
 	gl.clearColor(1.0, 1.0, 1.0, 1.0); // Clear to black, fully opaque
@@ -85,6 +86,8 @@ function drawScene(
 
 	setColorAttribute(gl, buffers, programInfo);
 
+	setTextureAttribute(gl, buffers, programInfo);
+
 	// Tell WebGL which indices to use to index the vertices
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
@@ -102,6 +105,12 @@ function drawScene(
 		false,
 		modelViewMatrix,
 	);
+
+	if (texture) {
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, texture);
+		gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+	}
 
 	{
 		const vertexCount = 36;
@@ -158,6 +167,28 @@ function setColorAttribute(
 		offset,
 	);
 	gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
+}
+
+function setTextureAttribute(
+	gl: WebGLRenderingContext,
+	buffers: { textureCoord: WebGLBuffer | null },
+	programInfo: { attribLocations: { textureCoord: number } },
+) {
+	const numComponents = 2;
+	const type = gl.FLOAT;
+	const normalize = false;
+	const stride = 0;
+	const offset = 0;
+	gl.bindBuffer(gl.ARRAY_BUFFER, buffers.textureCoord);
+	gl.vertexAttribPointer(
+		programInfo.attribLocations.textureCoord,
+		numComponents,
+		type,
+		normalize,
+		stride,
+		offset,
+	);
+	gl.enableVertexAttribArray(programInfo.attribLocations.textureCoord);
 }
 
 export { drawScene };

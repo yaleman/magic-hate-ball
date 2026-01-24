@@ -1,6 +1,7 @@
 type Buffers = {
 	position: WebGLBuffer | null;
 	color: WebGLBuffer | null;
+	textureCoord: WebGLBuffer | null;
 	indices: WebGLBuffer | null;
 };
 
@@ -12,11 +13,15 @@ function initBuffers(gl: WebGLRenderingContext): Buffers {
 	const colorBuffer = initColorBuffer(gl);
 	if (!colorBuffer) throw Error("Failed to initialize color buffer");
 
+	const textureCoordBuffer = initTextureBuffer(gl);
+	if (!textureCoordBuffer) throw Error("Failed to initialize texture buffer");
+
 	const indexBuffer = initIndexBuffer(gl);
 	if (!indexBuffer) throw Error("Failed to initialize position buffer");
 	return {
 		position: positionBuffer,
 		color: colorBuffer,
+		textureCoord: textureCoordBuffer,
 		indices: indexBuffer,
 	};
 }
@@ -59,12 +64,12 @@ function initPositionBuffer(gl: WebGLRenderingContext) {
 
 function initColorBuffer(gl: WebGLRenderingContext) {
 	const faceColors = [
-		[0.0, 0.0, 0.0, 0.0], // Front face: black
-		[1.0, 0.0, 0.0, 1.0], // Back face: red
-		[0.0, 1.0, 0.0, 1.0], // Top face: green
-		[0.0, 0.0, 1.0, 1.0], // Bottom face: blue
-		[1.0, 1.0, 0.0, 1.0], // Right face: yellow
-		[1.0, 0.0, 1.0, 1.0], // Left face: purple
+		[1.0, 1.0, 1.0, 1.0], // Front face
+		[1.0, 1.0, 1.0, 1.0], // Back face
+		[1.0, 1.0, 1.0, 1.0], // Top face
+		[1.0, 1.0, 1.0, 1.0], // Bottom face
+		[1.0, 1.0, 1.0, 1.0], // Right face
+		[1.0, 1.0, 1.0, 1.0], // Left face
 	];
 
 	// Convert the array of colors into a table for all the vertices.
@@ -82,6 +87,40 @@ function initColorBuffer(gl: WebGLRenderingContext) {
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
 
 	return colorBuffer;
+}
+
+function initTextureBuffer(gl: WebGLRenderingContext) {
+	const columns = 3;
+	const rows = 2;
+	const uStep = 1 / columns;
+	const vStep = 1 / rows;
+	const faceCells = [
+		{ col: 0, row: 0 }, // Front
+		{ col: 1, row: 0 }, // Back
+		{ col: 2, row: 0 }, // Top
+		{ col: 0, row: 1 }, // Bottom
+		{ col: 1, row: 1 }, // Right
+		{ col: 2, row: 1 }, // Left
+	];
+
+	const textureCoordinates: number[] = [];
+	for (const cell of faceCells) {
+		const u0 = cell.col * uStep;
+		const u1 = (cell.col + 1) * uStep;
+		const v0 = cell.row * vStep;
+		const v1 = (cell.row + 1) * vStep;
+		textureCoordinates.push(u0, v0, u1, v0, u1, v1, u0, v1);
+	}
+
+	const textureCoordBuffer = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordBuffer);
+	gl.bufferData(
+		gl.ARRAY_BUFFER,
+		new Float32Array(textureCoordinates),
+		gl.STATIC_DRAW,
+	);
+
+	return textureCoordBuffer;
 }
 
 function initIndexBuffer(gl: WebGLRenderingContext) {

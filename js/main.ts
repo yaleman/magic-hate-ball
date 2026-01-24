@@ -5,7 +5,15 @@ import type { ProgramInfo } from "./programinfo";
 let cubeRotation = 0.0;
 let deltaTime = 0;
 
-var answers: string[] = [];
+type TextTextureInfo = {
+	texture: WebGLTexture;
+	canvas: HTMLCanvasElement;
+	ctx: CanvasRenderingContext2D;
+	needsUpdate: boolean;
+};
+
+let answers: string[] = [];
+let textTextureInfo: TextTextureInfo | null = null;
 
 /// gets a batch of answers from the backend API
 async function getAnswers(): Promise<string[]> {
@@ -23,30 +31,30 @@ async function getAnswers(): Promise<string[]> {
 	}
 }
 
-// function wrapText(
-// 	ctx: CanvasRenderingContext2D,
-// 	text: string,
-// 	maxWidth: number,
-// ): string[] {
-// 	const words = text.split(/\s+/).filter(Boolean);
-// 	const lines: string[] = [];
-// 	let line = "";
-// 	for (const word of words) {
-// 		const testLine = line ? `${line} ${word}` : word;
-// 		if (ctx.measureText(testLine).width > maxWidth && line) {
-// 			lines.push(line);
-// 			line = word;
-// 		} else {
-// 			line = testLine;
-// 		}
-// 	}
-// 	if (line) {
-// 		lines.push(line);
-// 	}
-// 	return lines.length ? lines : [text];
-// }
+function wrapText(
+	ctx: CanvasRenderingContext2D,
+	text: string,
+	maxWidth: number,
+): string[] {
+	const words = text.split(/\s+/).filter(Boolean);
+	const lines: string[] = [];
+	let line = "";
+	for (const word of words) {
+		const testLine = line ? `${line} ${word}` : word;
+		if (ctx.measureText(testLine).width > maxWidth && line) {
+			lines.push(line);
+			line = word;
+		} else {
+			line = testLine;
+		}
+	}
+	if (line) {
+		lines.push(line);
+	}
+	return lines.length ? lines : [text];
+}
 
-function renderTetrahedron(): void {
+function renderLoop(): void {
 	const canvas = document.getElementById(
 		"hate-ball-canvas",
 	) as HTMLCanvasElement;
@@ -71,24 +79,29 @@ function renderTetrahedron(): void {
 	const vsSource = `
         attribute vec4 aVertexPosition;
         attribute vec4 aVertexColor;
+        attribute vec2 aTextureCoord;
 
         uniform mat4 uModelViewMatrix;
         uniform mat4 uProjectionMatrix;
 
         varying lowp vec4 vColor;
+        varying highp vec2 vTextureCoord;
 
         void main(void) {
         gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
         vColor = aVertexColor;
+        vTextureCoord = aTextureCoord;
         }
     `;
 
 	// Fragment shader program
 	const fsSource = `
         varying lowp vec4 vColor;
+        varying highp vec2 vTextureCoord;
+        uniform sampler2D uSampler;
 
         void main(void) {
-        gl_FragColor = vColor;
+        gl_FragColor = texture2D(uSampler, vTextureCoord) * vColor;
         }
     `;
 
@@ -109,6 +122,7 @@ function renderTetrahedron(): void {
 		attribLocations: {
 			vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
 			vertexColor: gl.getAttribLocation(shaderProgram, "aVertexColor"),
+			textureCoord: gl.getAttribLocation(shaderProgram, "aTextureCoord"),
 		},
 		uniformLocations: {
 			projectionMatrix: gl.getUniformLocation(
@@ -116,22 +130,34 @@ function renderTetrahedron(): void {
 				"uProjectionMatrix",
 			),
 			modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
+			uSampler: gl.getUniformLocation(shaderProgram, "uSampler"),
 		},
 	};
 
 	// Here's where we call the routine that builds all the
 	// objects we'll be drawing.
 	const buffers = initBuffers(gl);
+	textTextureInfo = initTextTexture(gl);
+	updateTextTexture(gl, textTextureInfo, answers);
 
 	let then = 0;
 
 	// Draw the scene repeatedly
 	function render(now: number, gl: WebGLRenderingContext) {
-		now *= 0.001; // convert to seconds
-		deltaTime = now - then;
-		then = now;
+		const nowSecs = now * 0.001; // convert to seconds
+		deltaTime = nowSecs - then;
+		then = nowSecs;
 
-		drawScene(gl, programInfo, buffers, cubeRotation);
+		if (textTextureInfo?.needsUpdate) {
+			uploadTextTexture(gl, textTextureInfo);
+		}
+		drawScene(
+			gl,
+			programInfo,
+			buffers,
+			textTextureInfo?.texture ?? null,
+			cubeRotation,
+		);
 		cubeRotation += deltaTime;
 
 		window.requestAnimationFrame((now) => render(now, gl));
@@ -162,6 +188,13 @@ async function displayAnswer() {
 				answerDiv.textContent = answers[0];
 				answerDiv.classList.remove("hidden");
 			}
+			const canvas = document.getElementById(
+				"hate-ball-canvas",
+			) as HTMLCanvasElement | null;
+			const gl = canvas?.getContext("webgl");
+			if (gl && textTextureInfo) {
+				updateTextTexture(gl, textTextureInfo, answers);
+			}
 			if (errorDiv) {
 				errorDiv.classList.add("hidden");
 			}
@@ -178,8 +211,115 @@ document.addEventListener("DOMContentLoaded", () => {
 	}
 	displayAnswer();
 
-	renderTetrahedron();
+	renderLoop();
 });
+
+function initTextTexture(gl: WebGLRenderingContext): TextTextureInfo {
+	const canvas = document.createElement("canvas");
+	canvas.width = 768;
+	canvas.height = 512;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) {
+		throw new Error("Unable to create 2D context for text texture");
+	}
+
+	const texture = gl.createTexture();
+	if (!texture) {
+		throw new Error("Unable to create WebGL texture");
+	}
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	gl.texImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		canvas.width,
+		canvas.height,
+		0,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		null,
+	);
+
+	return {
+		texture,
+		canvas,
+		ctx,
+		needsUpdate: true,
+	};
+}
+
+function updateTextTexture(
+	gl: WebGLRenderingContext,
+	textureInfo: TextTextureInfo,
+	texts: string[],
+) {
+	const { canvas, ctx } = textureInfo;
+	const columns = 3;
+	const rows = 2;
+	const cellWidth = canvas.width / columns;
+	const cellHeight = canvas.height / rows;
+	const padding = 20;
+	const faceColors = [
+		"#111111",
+		"#d64b4b",
+		"#45b86f",
+		"#3d7dd8",
+		"#e0c24d",
+		"#b05bcf",
+	];
+	const faceTexts = texts.length ? texts : ["..."];
+
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.textAlign = "center";
+	ctx.textBaseline = "middle";
+	ctx.font = "bold 22px sans-serif";
+
+	for (let i = 0; i < columns * rows; i += 1) {
+		const col = i % columns;
+		const row = Math.floor(i / columns);
+		const x = col * cellWidth;
+		const y = row * cellHeight;
+		ctx.fillStyle = faceColors[i % faceColors.length];
+		ctx.fillRect(x, y, cellWidth, cellHeight);
+
+		const text = faceTexts[i % faceTexts.length];
+		const maxWidth = cellWidth - padding * 2;
+		ctx.fillStyle = "#f7f3ea";
+		const lines = wrapText(ctx, text, maxWidth);
+		const lineHeight = 26;
+		const centerX = x + cellWidth / 2;
+		const centerY = y + cellHeight / 2;
+		const startY = centerY - ((lines.length - 1) * lineHeight) / 2;
+		for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+			ctx.fillText(lines[lineIndex], centerX, startY + lineIndex * lineHeight);
+		}
+	}
+
+	textureInfo.needsUpdate = true;
+	uploadTextTexture(gl, textureInfo);
+}
+
+function uploadTextTexture(
+	gl: WebGLRenderingContext,
+	textureInfo: TextTextureInfo,
+) {
+	gl.bindTexture(gl.TEXTURE_2D, textureInfo.texture);
+	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+	gl.texImage2D(
+		gl.TEXTURE_2D,
+		0,
+		gl.RGBA,
+		gl.RGBA,
+		gl.UNSIGNED_BYTE,
+		textureInfo.canvas,
+	);
+	textureInfo.needsUpdate = false;
+}
 
 //
 // Initialize a shader program, so WebGL knows how to draw our data

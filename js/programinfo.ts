@@ -3,10 +3,12 @@ type ProgramInfo = {
 	attribLocations: {
 		vertexPosition: number;
 		vertexColor: number;
+		textureCoord: number;
 	};
 	uniformLocations: {
 		projectionMatrix: WebGLUniformLocation | null;
 		modelViewMatrix: WebGLUniformLocation | null;
+		uSampler: WebGLUniformLocation | null;
 	};
 };
 
