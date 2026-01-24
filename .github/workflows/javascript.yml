@@ -23,5 +23,6 @@ jobs:
           cache: true
       - name: Running tests
         run: |
+          pnpm i --frozen-lockfile
           just js-lint
           just js-build

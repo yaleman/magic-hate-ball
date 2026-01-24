@@ -18,5 +18,5 @@ jobs:
           enable-cache: true
       - name: Running tests
         run: |
-          uv run python -m ruff-check
-          uv run python -m ruff-forma
+          uv run pre-commit run ruff-check
+          uv run pre-commit run ruff-forma
