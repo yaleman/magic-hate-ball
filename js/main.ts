@@ -69,19 +69,39 @@ function resizeCanvasToDisplaySize(
 	gl: WebGLRenderingContext,
 ) {
 	const rect = canvas.getBoundingClientRect();
-	const displayWidth = Math.max(1, Math.round(rect.width));
-	const displayHeight = Math.max(1, Math.round(rect.height));
+	const displaySize = Math.max(
+		1,
+		Math.round(Math.min(rect.width, rect.height)),
+	);
+	const displayWidth = displaySize;
+	const displayHeight = displaySize;
 	const dpr = window.devicePixelRatio || 1;
 	const renderWidth = Math.round(displayWidth * dpr);
 	const renderHeight = Math.round(displayHeight * dpr);
 
 	if (canvas.width !== renderWidth || canvas.height !== renderHeight) {
-		canvas.style.width = `${displayWidth}px`;
-		canvas.style.height = `${displayHeight}px`;
 		canvas.width = renderWidth;
 		canvas.height = renderHeight;
 		gl.viewport(0, 0, canvas.width, canvas.height);
 	}
+}
+
+function handleCanvasResize(
+	canvas: HTMLCanvasElement,
+	gl: WebGLRenderingContext,
+) {
+	let resizeTimer: number | null = null;
+	const resize = () => {
+		if (resizeTimer !== null) {
+			window.clearTimeout(resizeTimer);
+		}
+		resizeTimer = window.setTimeout(() => {
+			resizeCanvasToDisplaySize(canvas, gl);
+			resizeTimer = null;
+		}, 100);
+	};
+	window.addEventListener("resize", resize);
+	resizeCanvasToDisplaySize(canvas, gl);
 }
 
 // Set up WebGL, build buffers/textures, and drive the render loop.
@@ -100,9 +120,9 @@ function renderLoop(): void {
 		showError("Failed to get rendering context this is a bug :(");
 		return;
 	}
-	resizeCanvasToDisplaySize(canvas, gl);
-	// Set clear color to white, fully opaque
-	gl.clearColor(1.0, 1.0, 1.0, 1.0);
+	handleCanvasResize(canvas, gl);
+	// Set clear color to black, fully opaque
+	gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
 	// Clear the color buffer with specified clear color
 	gl.clear(gl.COLOR_BUFFER_BIT);
@@ -175,7 +195,6 @@ function renderLoop(): void {
 
 	// Draw the scene repeatedly
 	function render(now: number, gl: WebGLRenderingContext) {
-		resizeCanvasToDisplaySize(canvas, gl);
 		updateRotation(now);
 
 		if (textTextureInfo?.needsUpdate) {

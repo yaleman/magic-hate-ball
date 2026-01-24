@@ -9,11 +9,12 @@
         <h1>Welcome to the Magic Hate Ball!</h1>
         <p>Ask your question and receive an answer.</p>
 
-        <div id="ball">
+        <p class="controls"><button id="get_answer">Get Answer</button></p>
+
+        <div id="ball" class="ball-wrapper">
             <canvas id="hate-ball-canvas" width="300" height="300"></canvas>
+            <div class="ball-overlay" aria-hidden="true"></div>
         </div>
         <div id="error" class="errormsg hidden box"></div>
-
-        <p><button id="get_answer">Get Answer</button></p>
     </body>
 </html>
