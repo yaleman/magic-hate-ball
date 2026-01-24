@@ -64,6 +64,26 @@ function wrapText(
 	return lines.length ? lines : [text];
 }
 
+function resizeCanvasToDisplaySize(
+	canvas: HTMLCanvasElement,
+	gl: WebGLRenderingContext,
+) {
+	const rect = canvas.getBoundingClientRect();
+	const displayWidth = Math.max(1, Math.round(rect.width));
+	const displayHeight = Math.max(1, Math.round(rect.height));
+	const dpr = window.devicePixelRatio || 1;
+	const renderWidth = Math.round(displayWidth * dpr);
+	const renderHeight = Math.round(displayHeight * dpr);
+
+	if (canvas.width !== renderWidth || canvas.height !== renderHeight) {
+		canvas.style.width = `${displayWidth}px`;
+		canvas.style.height = `${displayHeight}px`;
+		canvas.width = renderWidth;
+		canvas.height = renderHeight;
+		gl.viewport(0, 0, canvas.width, canvas.height);
+	}
+}
+
 // Set up WebGL, build buffers/textures, and drive the render loop.
 function renderLoop(): void {
 	const canvas = document.getElementById(
@@ -80,6 +100,7 @@ function renderLoop(): void {
 		showError("Failed to get rendering context this is a bug :(");
 		return;
 	}
+	resizeCanvasToDisplaySize(canvas, gl);
 	// Set clear color to white, fully opaque
 	gl.clearColor(1.0, 1.0, 1.0, 1.0);
 
@@ -154,6 +175,7 @@ function renderLoop(): void {
 
 	// Draw the scene repeatedly
 	function render(now: number, gl: WebGLRenderingContext) {
+		resizeCanvasToDisplaySize(canvas, gl);
 		updateRotation(now);
 
 		if (textTextureInfo?.needsUpdate) {
@@ -247,8 +269,8 @@ function lerp(start: number, end: number, t: number) {
 // Create a canvas-backed texture and initialize WebGL parameters.
 function initTextTexture(gl: WebGLRenderingContext): TextTextureInfo {
 	const canvas = document.createElement("canvas");
-	canvas.width = 768;
-	canvas.height = 512;
+	canvas.width = 2048;
+	canvas.height = 1365;
 	const ctx = canvas.getContext("2d");
 	if (!ctx) {
 		throw new Error("Unable to create 2D context for text texture");
@@ -295,7 +317,8 @@ function updateTextTexture(
 	const rows = 2;
 	const cellWidth = canvas.width / columns;
 	const cellHeight = canvas.height / rows;
-	const padding = 20;
+	const scale = canvas.width / 768;
+	const padding = 20 * scale;
 
 	const colourBlack = "#111111";
 	const colourWhite = "#ffffff";
@@ -319,7 +342,7 @@ function updateTextTexture(
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	ctx.textAlign = "center";
 	ctx.textBaseline = "middle";
-	ctx.font = "bold 22px sans-serif";
+	ctx.font = `bold ${22 * scale}px sans-serif`;
 
 	for (let i = 0; i < columns * rows; i += 1) {
 		const col = i % columns;
@@ -337,7 +360,7 @@ function updateTextTexture(
 			ctx.fillStyle = colourWhite;
 		}
 		const lines = wrapText(ctx, text, maxWidth);
-		const lineHeight = 26;
+		const lineHeight = 26 * scale;
 		const centerX = x + cellWidth / 2;
 		const centerY = y + cellHeight / 2;
 		const startY = centerY - ((lines.length - 1) * lineHeight) / 2;
