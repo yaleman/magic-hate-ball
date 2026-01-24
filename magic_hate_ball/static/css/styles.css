@@ -21,8 +21,8 @@ body {
 	color: #fff;
 	background: linear-gradient(135deg, #6a2ad1, #5120a6);
 	border: none;
-	border-radius: 999px;
-	box-shadow: 0 10px 24px rgba(81, 32, 166, 0.35);
+	border-radius: 1rem;
+	box-shadow: 0 0.25rem 0.5rem rgba(81, 32, 166, 0.35);
 	cursor: pointer;
 }
 
@@ -41,7 +41,7 @@ body {
 	inset: -6%;
 	border-radius: 50%;
 	background: #000;
-	box-shadow: 0 22px 55px rgba(0, 0, 0, 0.7);
+	box-shadow: 0 1.375rem 3.4375rem rgba(0, 0, 0, 0.7);
 	z-index: 0;
 }
 

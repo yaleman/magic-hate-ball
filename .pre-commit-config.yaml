@@ -37,7 +37,7 @@ repos:
     rev: v2.3.10 # Use the sha / tag you want to point at
     hooks:
       - id: biome-check
-        files: "\\.(jsx?|tsx?|c(js|ts)|m(js|ts)|d\\.(ts|cts|mts)|css|svelte|vue|astro|graphql|gql)$"
+        files: "\\.(jsx?|tsx?|c(js|ts)|m(js|ts)d\\.(ts|cts|mts)|css|svelte|vue|astro|graphql|gql|html|)$"
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
     rev: v0.14.14
@@ -49,3 +49,8 @@ repos:
       # Run the formatter.
       - id: ruff-format
         types_or: [python, pyi]
+
+  - repo: https://github.com/semgrep/pre-commit
+    rev: "v1.149.0"
+    hooks:
+      - id: semgrep-ci

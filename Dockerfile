@@ -1,4 +1,4 @@
-FROM node:20-slim AS js-builder
+FROM node:24-slim AS js-builder
 
 WORKDIR /app
 
@@ -20,6 +20,8 @@ COPY magic_hate_ball ./magic_hate_ball
 COPY --from=js-builder /app/magic_hate_ball/static/js ./magic_hate_ball/static/js
 
 RUN pip install --no-cache-dir .
+RUN adduser --disabled-password --gecos "" nonroot
 
-EXPOSE 8000
+
+USER nonroot
 CMD ["magic-hate-ball"]
