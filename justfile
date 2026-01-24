@@ -21,7 +21,10 @@ js-build:
 pre-commit:
     uv run pre-commit install
     uv run pre-commit autoupdate
-    uv run pre-commit
+    uv run pre-commit run --all-files
 
 run: js-build
-    uv run uvicorn magic_hate_ball.cli:get_app --reload
+    uv run hypercorn "magic_hate_ball.cli:get_app()" --reload
+
+reload:
+    uv run magic-hate-ball --reload

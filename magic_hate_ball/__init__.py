@@ -1,6 +1,7 @@
 from pathlib import Path
 from dataclasses import dataclass
 import random
+import sys
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, FileResponse
@@ -11,10 +12,20 @@ import magic_hate_ball.templates as templates
 
 @dataclass
 class Answer:
+    """answer response from the API"""
+
     answer: str
 
 
+@dataclass
+class Answers:
+    """answers response from the API"""
+
+    answers: list[str]
+
+
 def get_app() -> FastAPI:
+    print("Welcome to the Magic Hate Ball!", file=sys.stderr)
     app = FastAPI()
 
     @app.get("/")
@@ -26,6 +37,11 @@ def get_app() -> FastAPI:
     async def get_answer() -> Answer:
         """get a random answer"""
         return Answer(answer=random.choice(RESPONSES))
+
+    @app.get("/answers")
+    async def get_answers() -> Answers:
+        """get some random answers"""
+        return Answers(answers=random.choices(RESPONSES, k=4))
 
     @app.get("/health")
     async def health_check() -> str:
