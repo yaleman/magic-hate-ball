@@ -2,26 +2,32 @@
 default:
     just --list
 
-check: fmt lint test pre-commit
+check: pre-commit
 
-test:
-    uv run pytest
-
-fmt:
-    uv run ruff format --check
-
-lint:
-    uv run ty check
-    uv run mypy --strict magic_hate_ball tests
-
-
-js-build:
-    pnpm build
 
 pre-commit:
-    uv run pre-commit install
-    uv run pre-commit autoupdate
     uv run pre-commit run --all-files
+
+test:
+    uv run pre-commit run --all-files pytest
+
+fmt:
+    uv run pre-commit run  --all-files ruff-format
+
+lint:
+    uv run pre-commit run --all-files ty
+    uv run pre-commit run --all-files mypy
+
+js-lint:
+    uv run pre-commit run --all-files biome-check
+
+js-build: js-lint
+    pnpm build
+
+# set up the pre-commit environment
+pre-commit-setup:
+    uv run pre-commit autoupdate
+    uv run pre-commit install
 
 run: js-build
     uv run hypercorn "magic_hate_ball.cli:get_app()" --reload

@@ -16,9 +16,7 @@ function getOutfilePath(filepath) {
 
 async function buildfile(filepath) {
 	const outfile = getOutfilePath(filepath);
-	console.log(
-		`Building ${filepath}... to ${outfile}`,
-	);
+	console.log(`Building ${filepath}... to ${outfile}`);
 	try {
 		await build({
 			entryPoints: [filepath],
