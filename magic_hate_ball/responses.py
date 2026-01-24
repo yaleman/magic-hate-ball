@@ -1,7 +1,7 @@
 RESPONSES = [
     "That's a great question!",
     "Too many requests, try again later.",
-    "My trainig data does not cover that topic.",
+    "My training data does not cover that topic.",
     "You're 100% right!",
     "I completely disagree with you.",
     "Maybe you should rethink your stance.",

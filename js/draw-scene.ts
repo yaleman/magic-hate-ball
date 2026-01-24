@@ -3,12 +3,18 @@ import { mat4 } from "gl-matrix";
 import type { Buffers } from "./init-buffers.js";
 import type { ProgramInfo } from "./programinfo.js";
 
+type Rotation = {
+	x: number;
+	y: number;
+	z: number;
+};
+
 function drawScene(
 	gl: WebGLRenderingContext,
 	programInfo: ProgramInfo,
 	buffers: Buffers,
 	texture: WebGLTexture | null,
-	cubeRotation: number,
+	rotation: Rotation,
 ) {
 	gl.clearColor(1.0, 1.0, 1.0, 1.0); // Clear to black, fully opaque
 	gl.clearDepth(1.0); // Clear everything
@@ -64,19 +70,19 @@ function drawScene(
 	mat4.rotate(
 		modelViewMatrix, // destination matrix
 		modelViewMatrix, // matrix to rotate
-		cubeRotation, // amount to rotate in radians
+		rotation.z, // amount to rotate in radians
 		[0, 0, 1],
 	); // axis to rotate around (Z)
 	mat4.rotate(
 		modelViewMatrix, // destination matrix
 		modelViewMatrix, // matrix to rotate
-		cubeRotation * 0.7, // amount to rotate in radians
+		rotation.y, // amount to rotate in radians
 		[0, 1, 0],
 	); // axis to rotate around (Y)
 	mat4.rotate(
 		modelViewMatrix, // destination matrix
 		modelViewMatrix, // matrix to rotate
-		cubeRotation * 0.3, // amount to rotate in radians
+		rotation.x, // amount to rotate in radians
 		[1, 0, 0],
 	); // axis to rotate around (X)
 

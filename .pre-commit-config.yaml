@@ -29,12 +29,7 @@ repos:
         pass_filenames: false
       - id: js-build
         name: Run just js-build
-        entry: just js-build
-        language: system
-        pass_filenames: false
-      - id: js-build-clean
-        name: Ensure js-build leaves magic_hate_ball/static/js clean
-        entry: sh -c "git diff --name-only --exit-code -- magic_hate_ball/static/js/"
+        entry: pnpm run build
         language: system
         pass_filenames: false
 

@@ -2,9 +2,6 @@ import { drawScene } from "./draw-scene";
 import { initBuffers } from "./init-buffers";
 import type { ProgramInfo } from "./programinfo";
 
-let cubeRotation = 0.0;
-let deltaTime = 0;
-
 type TextTextureInfo = {
 	texture: WebGLTexture;
 	canvas: HTMLCanvasElement;
@@ -12,10 +9,22 @@ type TextTextureInfo = {
 	needsUpdate: boolean;
 };
 
+type Rotation = {
+	x: number;
+	y: number;
+	z: number;
+};
+
 let answers: string[] = [];
 let textTextureInfo: TextTextureInfo | null = null;
+let currentRotation: Rotation = { x: 0, y: 0, z: 0 };
+let startRotation: Rotation = { x: 0, y: 0, z: 0 };
+const targetRotation: Rotation = { x: 0, y: 0, z: 0 };
+let settleStartMs: number | null = null;
+const settleDurationMs = 1000;
 
 /// gets a batch of answers from the backend API
+// Fetch the latest answer list from the backend.
 async function getAnswers(): Promise<string[]> {
 	try {
 		const response = await fetch("/answers");
@@ -31,6 +40,7 @@ async function getAnswers(): Promise<string[]> {
 	}
 }
 
+// Wrap a string into multiple lines based on a max pixel width.
 function wrapText(
 	ctx: CanvasRenderingContext2D,
 	text: string,
@@ -54,6 +64,7 @@ function wrapText(
 	return lines.length ? lines : [text];
 }
 
+// Set up WebGL, build buffers/textures, and drive the render loop.
 function renderLoop(): void {
 	const canvas = document.getElementById(
 		"hate-ball-canvas",
@@ -139,14 +150,11 @@ function renderLoop(): void {
 	const buffers = initBuffers(gl);
 	textTextureInfo = initTextTexture(gl);
 	updateTextTexture(gl, textTextureInfo, answers);
-
-	let then = 0;
+	randomizeRotation();
 
 	// Draw the scene repeatedly
 	function render(now: number, gl: WebGLRenderingContext) {
-		const nowSecs = now * 0.001; // convert to seconds
-		deltaTime = nowSecs - then;
-		then = nowSecs;
+		updateRotation(now);
 
 		if (textTextureInfo?.needsUpdate) {
 			uploadTextTexture(gl, textTextureInfo);
@@ -156,15 +164,15 @@ function renderLoop(): void {
 			programInfo,
 			buffers,
 			textTextureInfo?.texture ?? null,
-			cubeRotation,
+			currentRotation,
 		);
-		cubeRotation += deltaTime;
 
 		window.requestAnimationFrame((now) => render(now, gl));
 	}
 	window.requestAnimationFrame((now) => render(now, gl));
 }
 
+// Show an error message in the UI.
 async function showError(message: string) {
 	console.error(message);
 	const errorDiv = document.getElementById("error");
@@ -174,6 +182,7 @@ async function showError(message: string) {
 	}
 }
 
+// Fetch answers, update the UI, and refresh the texture.
 async function displayAnswer() {
 	const errorDiv = document.getElementById("error");
 	try {
@@ -183,11 +192,6 @@ async function displayAnswer() {
 		} else {
 			console.debug(`Received answers: ${answerResponse.join(" | ")}`);
 			answers = answerResponse;
-			const answerDiv = document.getElementById("answer");
-			if (answerDiv) {
-				answerDiv.textContent = answers[0];
-				answerDiv.classList.remove("hidden");
-			}
 			const canvas = document.getElementById(
 				"hate-ball-canvas",
 			) as HTMLCanvasElement | null;
@@ -195,6 +199,7 @@ async function displayAnswer() {
 			if (gl && textTextureInfo) {
 				updateTextTexture(gl, textTextureInfo, answers);
 			}
+			randomizeRotation();
 			if (errorDiv) {
 				errorDiv.classList.add("hidden");
 			}
@@ -204,16 +209,42 @@ async function displayAnswer() {
 	}
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-	const button = document.getElementById("get_answer") as HTMLButtonElement;
-	if (button) {
-		button.addEventListener("click", displayAnswer);
+// Start a new randomized rotation that eases back to front-facing.
+function randomizeRotation() {
+	startRotation = {
+		x: Math.random() * Math.PI * 2,
+		y: Math.random() * Math.PI * 2,
+		z: Math.random() * Math.PI * 2,
+	};
+	currentRotation = { ...startRotation };
+	settleStartMs = performance.now();
+}
+
+// Update the cube rotation based on the current settle animation.
+function updateRotation(nowMs: number) {
+	if (settleStartMs === null) {
+		return;
 	}
-	displayAnswer();
+	const t = (nowMs - settleStartMs) / settleDurationMs;
+	if (t >= 1) {
+		currentRotation = { ...targetRotation };
+		settleStartMs = null;
+		return;
+	}
+	const eased = 1 - (1 - t) ** 3;
+	currentRotation = {
+		x: lerp(startRotation.x, targetRotation.x, eased),
+		y: lerp(startRotation.y, targetRotation.y, eased),
+		z: lerp(startRotation.z, targetRotation.z, eased),
+	};
+}
 
-	renderLoop();
-});
+// Linear interpolation helper.
+function lerp(start: number, end: number, t: number) {
+	return start + (end - start) * t;
+}
 
+// Create a canvas-backed texture and initialize WebGL parameters.
 function initTextTexture(gl: WebGLRenderingContext): TextTextureInfo {
 	const canvas = document.createElement("canvas");
 	canvas.width = 768;
@@ -253,6 +284,7 @@ function initTextTexture(gl: WebGLRenderingContext): TextTextureInfo {
 	};
 }
 
+// Draw answer text into the atlas and schedule a texture upload.
 function updateTextTexture(
 	gl: WebGLRenderingContext,
 	textureInfo: TextTextureInfo,
@@ -264,14 +296,24 @@ function updateTextTexture(
 	const cellWidth = canvas.width / columns;
 	const cellHeight = canvas.height / rows;
 	const padding = 20;
+
+	const colourBlack = "#111111";
+	const colourWhite = "#ffffff";
+	const colourRed = "#d64b4b";
+	const colourGreen = "#45b86f";
+	const colourBlue = "#1253ae";
+	const colourYellow = "#e0c24d";
+	const colourPurple = "#4b0067";
 	const faceColors = [
-		"#111111",
-		"#d64b4b",
-		"#45b86f",
-		"#3d7dd8",
-		"#e0c24d",
-		"#b05bcf",
+		colourBlack,
+		colourRed,
+		colourGreen,
+		colourBlue,
+		colourYellow,
+		colourPurple,
 	];
+	// randomize the colours
+	faceColors.sort(() => Math.random() - 0.5);
 	const faceTexts = texts.length ? texts : ["..."];
 
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -289,7 +331,11 @@ function updateTextTexture(
 
 		const text = faceTexts[i % faceTexts.length];
 		const maxWidth = cellWidth - padding * 2;
-		ctx.fillStyle = "#f7f3ea";
+		if ([colourYellow, colourGreen].includes(ctx.fillStyle)) {
+			ctx.fillStyle = colourBlack;
+		} else {
+			ctx.fillStyle = colourWhite;
+		}
 		const lines = wrapText(ctx, text, maxWidth);
 		const lineHeight = 26;
 		const centerX = x + cellWidth / 2;
@@ -304,6 +350,7 @@ function updateTextTexture(
 	uploadTextTexture(gl, textureInfo);
 }
 
+// Upload the canvas contents into the WebGL texture.
 function uploadTextTexture(
 	gl: WebGLRenderingContext,
 	textureInfo: TextTextureInfo,
@@ -324,6 +371,7 @@ function uploadTextTexture(
 //
 // Initialize a shader program, so WebGL knows how to draw our data
 //
+// Compile and link the vertex/fragment shaders into a program.
 function initShaderProgram(
 	gl: WebGLRenderingContext,
 	vsSource: string,
@@ -359,6 +407,7 @@ function initShaderProgram(
 // creates a shader of the given type, uploads the source and
 // compiles it.
 //
+// Create and compile a single shader.
 function loadShader(gl: WebGLRenderingContext, type: number, source: string) {
 	const shader = gl.createShader(type);
 	if (!shader) {
@@ -384,3 +433,12 @@ function loadShader(gl: WebGLRenderingContext, type: number, source: string) {
 
 	return shader;
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+	const button = document.getElementById("get_answer") as HTMLButtonElement;
+	if (button) {
+		button.addEventListener("click", displayAnswer);
+	}
+	renderLoop();
+	displayAnswer();
+});
