@@ -18,6 +18,9 @@ lint:
     uv run pre-commit run --all-files ty
     uv run pre-commit run --all-files mypy
 
+# do the javscript checks
+js: js-lint js-build
+
 js-lint:
     uv run pre-commit run --all-files biome-check
 
