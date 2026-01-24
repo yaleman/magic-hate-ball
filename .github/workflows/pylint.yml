@@ -19,4 +19,4 @@ jobs:
       - name: Running tests
         run: |
           uv run pre-commit run ruff-check
-          uv run pre-commit run ruff-forma
+          uv run pre-commit run ruff-format
