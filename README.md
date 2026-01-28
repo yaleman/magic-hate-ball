@@ -2,6 +2,14 @@
 
 Simple app to show a Magic 8 Ball with stupid answers. Probably making jokes about AI.
 
+## Running it
+
+```shell
+$ uv run magic-hate-ball
+# or
+$ uvx --from 'git+https://github.com/yaleman/magic-hate-ball' magic-hate-ball
+```
+
 ## Docker
 
 Build the image:
