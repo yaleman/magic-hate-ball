@@ -1,5 +1,9 @@
 # magic-hate-ball
 
+> [!NOTE]
+>
+> Archived, but email me if you really want to work with me on it.
+
 Simple app to show a Magic 8 Ball with stupid answers. Probably making jokes about AI.
 
 ## Running it
